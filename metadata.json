@@ -1,0 +1,10 @@
+{
+  "name": "VocalMaster Pro",
+  "description": "Professional vocal range trainer, pitch detector, and realistic concert grand piano studio with human vocal timbres library.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
