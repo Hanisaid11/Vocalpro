@@ -279,8 +279,8 @@ export const GlobalMetronomeHeaderToggle: React.FC<GlobalMetronomeHeaderTogglePr
       {/* ======================================================== */}
       {isPopoverOpen && (
         <div
-          className={`absolute top-full mt-2.5 z-50 w-72 sm:w-80 p-4 rounded-2xl bg-[#0b111e]/98 backdrop-blur-xl border border-slate-700/80 shadow-2xl text-slate-100 animate-in fade-in zoom-in-95 duration-150 ${
-            isAr ? 'left-0 sm:left-auto right-0' : 'right-0'
+          className={`absolute top-full mt-2 z-50 w-72 sm:w-80 max-w-[calc(100vw-20px)] p-3.5 sm:p-4 rounded-2xl bg-[#0b111e]/98 backdrop-blur-xl border border-slate-700/80 shadow-2xl text-slate-100 animate-in fade-in zoom-in-95 duration-150 ${
+            isAr ? 'right-auto -left-12 sm:left-auto sm:right-0' : 'left-auto -right-12 sm:right-0 sm:left-auto'
           }`}
         >
           {/* Header Bar */}

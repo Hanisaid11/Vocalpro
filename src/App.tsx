@@ -244,7 +244,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${currentTheme.appBg} ${currentTheme.appText} flex flex-col transition-colors duration-300 selection:bg-indigo-500/30`}>
+    <div className={`min-h-screen ${currentTheme.appBg} ${currentTheme.appText} flex flex-col transition-colors duration-300 selection:bg-indigo-500/30 w-full max-w-full overflow-x-hidden`}>
       {/* Offline connectivity banner */}
       <OfflineBanner />
 

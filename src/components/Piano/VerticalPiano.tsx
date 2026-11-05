@@ -288,7 +288,7 @@ export const VerticalPiano: React.FC<VerticalPianoProps> = ({
         ========================================================================
       */}
       <div
-        className={`px-2.5 py-2 ${themeConfig.topBarBg} border-b ${themeConfig.topBarBorder} flex items-center justify-between gap-1.5 sm:gap-2 text-xs z-30 shrink-0 shadow-md backdrop-blur-md`}
+        className={`px-2.5 py-2 ${themeConfig.topBarBg} border-b ${themeConfig.topBarBorder} flex items-center justify-between gap-1.5 sm:gap-2 text-xs z-30 shrink-0 shadow-md backdrop-blur-md overflow-x-auto scrollbar-none max-w-full`}
         dir="ltr"
       >
         {/* Navigation & Range Jump Controls */}

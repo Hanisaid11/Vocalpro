@@ -36,8 +36,8 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onChangeTab, 
   };
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 z-40 ${currentTheme.navBg} backdrop-blur-lg ${currentTheme.navBorder} px-1 py-1.5 safe-area-pb transition-colors duration-300 shadow-lg`}>
-      <div className="max-w-lg mx-auto flex items-center justify-around">
+    <nav className={`fixed bottom-0 left-0 right-0 z-40 ${currentTheme.navBg} backdrop-blur-lg ${currentTheme.navBorder} px-1 py-1.5 safe-area-pb transition-colors duration-300 shadow-lg w-full max-w-full overflow-hidden`}>
+      <div className="max-w-lg mx-auto flex items-center justify-around w-full">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

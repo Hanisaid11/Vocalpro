@@ -157,9 +157,9 @@ export const PianoView: React.FC<PianoViewProps> = ({
   return (
     <div className={`flex flex-col gap-2.5 ${isFullscreen ? `fixed inset-0 z-50 ${currentTheme.appBg} p-2` : ''}`}>
       {/* Top Layout & Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 w-full max-w-full">
         {/* Left: Quick instrument, notation, & theme pills */}
-        <div className="flex items-center gap-1.5 relative">
+        <div className="flex items-center gap-1.5 relative flex-wrap max-w-full">
           {/* Instrument Pill */}
           <div className="relative">
             <button

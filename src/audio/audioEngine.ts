@@ -74,7 +74,7 @@ class AudioEngine {
   }
 
   public setPianoSource(source: PianoSoundSource): void {
-    pianoSoundManager.setSource(source);
+    pianoSoundManager.setSource(source, this.audioCtx || undefined);
   }
 
   public getPianoSource(): PianoSoundSource {
@@ -114,8 +114,22 @@ class AudioEngine {
     return this.currentTempoBpm;
   }
 
-  public setNoteDuration(sec: number, tempoBpm?: number): void {
-    this.noteDurationSeconds = Math.max(0.1, sec);
+  public setNoteDuration(sec: number | 'short' | 'medium' | 'long', tempoBpm?: number): void {
+    let durSec = 2.2;
+    if (sec === 'short') {
+      durSec = 1.2;
+      if (tempoBpm === undefined) tempoBpm = 120;
+    } else if (sec === 'medium') {
+      durSec = 2.2;
+      if (tempoBpm === undefined) tempoBpm = 80;
+    } else if (sec === 'long') {
+      durSec = 3.8;
+      if (tempoBpm === undefined) tempoBpm = 50;
+    } else {
+      durSec = Math.max(0.1, sec);
+    }
+
+    this.noteDurationSeconds = durSec;
     if (tempoBpm !== undefined) {
       this.currentTempoBpm = Math.max(30, Math.min(240, Math.round(tempoBpm)));
     } else {
@@ -289,6 +303,8 @@ class AudioEngine {
 
       // Preload high-quality human vocal timbre samples ('aah', 'ooh', 'eee', 'mmm', 'lip-trill')
       vocalSampleLibrary.preloadStandardTimbres(this.audioCtx);
+      // Preload priority piano samples for selected piano sound source
+      pianoSoundManager.preloadEssentialNotes(this.audioCtx);
     }
 
     if (this.audioCtx.state === 'suspended') {
@@ -557,25 +573,65 @@ class AudioEngine {
   }
 
   /**
+   * Plays a scale adjusting setTimeout intervals for each note in the scale according to duration:
+   * 'short' (1.2s intervals), 'medium' (2.2s intervals), or 'long' (3.8s intervals)
+   */
+  public playScale(
+    midiNotes: number[],
+    duration: 'short' | 'medium' | 'long' | 'custom' | number = 'medium',
+    instrument?: InstrumentType,
+    onStepChange?: (stepIndex: number) => void,
+    onComplete?: () => void
+  ): () => void {
+    return this.playScaleWithTempo(
+      midiNotes,
+      duration,
+      undefined,
+      instrument,
+      onStepChange,
+      onComplete
+    );
+  }
+
+  /**
    * Plays a musical scale sequentially respecting the exact configured tempo (BPM)
-   * and note duration interval, invoking step callbacks for visual sync.
+   * and note duration interval, adjusting the setTimeout intervals for each note in the scale.
    * Returns a cleanup cancellation function.
    */
   public playScaleWithTempo(
     midiNotes: number[],
-    noteDurationSeconds?: number,
+    noteDurationSeconds?: number | 'short' | 'medium' | 'long' | 'custom',
     tempoBpm?: number,
     instrument?: InstrumentType,
     onStepChange?: (stepIndex: number) => void,
     onComplete?: () => void
   ): () => void {
-    const durSec = noteDurationSeconds ?? this.noteDurationSeconds;
-    const bpm = tempoBpm ?? this.currentTempoBpm;
-    if (tempoBpm !== undefined) {
+    let durSec = this.noteDurationSeconds;
+    let bpm = tempoBpm ?? this.currentTempoBpm;
+
+    if (noteDurationSeconds === 'short') {
+      durSec = 1.2;
+      if (tempoBpm === undefined) bpm = 120;
+    } else if (noteDurationSeconds === 'medium') {
+      durSec = 2.2;
+      if (tempoBpm === undefined) bpm = 80;
+    } else if (noteDurationSeconds === 'long') {
+      durSec = 3.8;
+      if (tempoBpm === undefined) bpm = 50;
+    } else if (noteDurationSeconds === 'custom') {
+      durSec = this.noteDurationSeconds;
+    } else if (typeof noteDurationSeconds === 'number') {
+      durSec = Math.max(0.2, noteDurationSeconds);
+    }
+
+    if (bpm !== undefined) {
       this.currentTempoBpm = bpm;
     }
+    this.noteDurationSeconds = durSec;
+
+    // Dynamically adjust setTimeout intervals for each note in the scale accordingly
     const stepIntervalMs = Math.round(durSec * 1000);
-    const soundDurationSec = Math.max(0.4, durSec * 0.88);
+    const soundDurationSec = Math.max(0.35, durSec * 0.88);
     const timeouts: number[] = [];
 
     midiNotes.forEach((midi, idx) => {

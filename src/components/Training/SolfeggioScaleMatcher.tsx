@@ -290,10 +290,10 @@ export const SolfeggioScaleMatcher: React.FC<SolfeggioScaleMatcherProps> = ({
     setIsPreviewScaleActive(true);
 
     const midiList = solfegeScaleData.map((step) => step.midi);
-    cancelPreviewRef.current = audioEngine.playScaleWithTempo(
+    // Use audioEngine.playScale which calculates and adjusts setTimeout intervals for each note according to durationInterval
+    cancelPreviewRef.current = audioEngine.playScale(
       midiList,
-      noteDurationSec,
-      currentTempoBpm,
+      durationInterval,
       'piano',
       (idx) => setPreviewStepIdx(idx),
       () => {
@@ -600,7 +600,51 @@ export const SolfeggioScaleMatcher: React.FC<SolfeggioScaleMatcherProps> = ({
               </div>
             </div>
 
-            {/* Three Primary Intervals: Short, Medium, Long */}
+            {/* Dedicated Set of Buttons to Toggle Note Duration (Short / Medium / Long) */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-2xl shadow-inner">
+              {(['short', 'medium', 'long'] as const).map((durationId) => {
+                const isSelected = durationInterval === durationId;
+                const config = DURATION_INTERVALS.find((d) => d.id === durationId)!;
+                return (
+                  <button
+                    key={durationId}
+                    type="button"
+                    onClick={() => handleSelectDurationInterval(durationId, config.seconds)}
+                    className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
+                      isSelected
+                        ? durationId === 'short'
+                          ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black shadow-md shadow-amber-950/40 ring-1 ring-amber-300'
+                          : durationId === 'medium'
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-black shadow-md shadow-cyan-950/40 ring-1 ring-cyan-300'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black shadow-md shadow-purple-950/40 ring-1 ring-purple-300'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                    }`}
+                  >
+                    <span className="text-sm">{config.icon}</span>
+                    <span>
+                      {durationId === 'short'
+                        ? (isAr ? 'قصير (Short)' : 'Short')
+                        : durationId === 'medium'
+                        ? (isAr ? 'متوسط (Medium)' : 'Medium')
+                        : (isAr ? 'طويل (Long)' : 'Long')}
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                        isSelected
+                          ? durationId === 'long'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-black/25 text-slate-950 font-extrabold'
+                          : 'bg-slate-900 text-slate-400'
+                      }`}
+                    >
+                      {config.seconds}s
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Three Primary Intervals Detailed Cards: Short, Medium, Long */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {DURATION_INTERVALS.map((item) => {
                 const isSelected = durationInterval === item.id;

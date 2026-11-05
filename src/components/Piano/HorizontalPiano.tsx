@@ -185,7 +185,7 @@ export const HorizontalPiano: React.FC<HorizontalPianoProps> = ({
     <div className="flex flex-col bg-slate-950 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden select-none">
       {/* Top Controls Bar */}
       <div
-        className={`p-2 sm:p-2.5 ${themeConfig.topBarBg} border-b ${themeConfig.topBarBorder} flex items-center justify-between gap-1 sm:gap-2.5 text-xs`}
+        className={`p-2 sm:p-2.5 ${themeConfig.topBarBg} border-b ${themeConfig.topBarBorder} flex items-center justify-between gap-1 sm:gap-2.5 text-xs overflow-x-auto scrollbar-none max-w-full`}
         dir="ltr"
       >
         <button

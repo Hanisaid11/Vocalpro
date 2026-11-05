@@ -92,18 +92,24 @@ const SALAMANDER_ANCHORS: Record<number, string> = {
   108: 'C8',
 };
 
+// SoundFont anchors for FluidR3 & Musyng (Anchor Midi -> SoundFont note name)
+const SOUNDFONT_ANCHORS: Record<number, string> = {
+  36: 'C2',
+  42: 'Gb2',
+  48: 'C3',
+  54: 'Gb3',
+  60: 'C4',
+  66: 'Gb4',
+  72: 'C5',
+  78: 'Gb5',
+  84: 'C6',
+  90: 'Gb6',
+  96: 'C7',
+};
+
 const SALAMANDER_BASE_URL = 'https://tonejs.github.io/audio/salamander/';
 const FLUIDR3_BASE_URL = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/acoustic_grand_piano-mp3/';
 const MUSYNG_BASE_URL = 'https://gleitz.github.io/midi-js-soundfonts/MusyngKite/acoustic_grand_piano-mp3/';
-
-// Convert midi number to standard SoundFont note name (e.g. 60 -> "C4", 61 -> "Db4")
-const NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-
-function midiToSoundFontName(midi: number): string {
-  const noteName = NOTE_NAMES_FLAT[midi % 12];
-  const octave = Math.floor(midi / 12) - 1;
-  return `${noteName}${octave}`;
-}
 
 class PianoSoundManager {
   private currentSource: PianoSoundSource = 'yamaha-c5';
@@ -129,7 +135,7 @@ class PianoSoundManager {
     return this.currentSource;
   }
 
-  public setSource(src: PianoSoundSource) {
+  public setSource(src: PianoSoundSource, ctx?: AudioContext) {
     this.currentSource = src;
     if (typeof window !== 'undefined') {
       try {
@@ -138,27 +144,36 @@ class PianoSoundManager {
         // Ignore
       }
     }
+    if (ctx && src !== 'acoustic-synth') {
+      this.preloadSourceAnchors(ctx, src);
+    }
   }
 
   /**
-   * Preloads common middle octaves in the background for zero-latency playing
+   * Preloads priority anchors in the background for zero-latency playing
    */
   public preloadEssentialNotes(audioCtx: AudioContext) {
     if (this.isPreloaded) return;
     this.isPreloaded = true;
+    this.preloadSourceAnchors(audioCtx, this.currentSource);
+  }
 
-    // Preload middle range: C3, Ds3, G3, C4, Ds4, Fs4, A4, C5
-    const priorityMidis = [48, 51, 55, 60, 63, 66, 69, 72];
+  /**
+   * Preload anchors for a specific sound source
+   */
+  public preloadSourceAnchors(audioCtx: AudioContext, source: PianoSoundSource) {
+    if (source === 'acoustic-synth') return;
+    const priorityMidis = [48, 54, 60, 66, 72, 78, 84];
     priorityMidis.forEach((midi) => {
-      this.loadSampleForMidi(audioCtx, midi, 'yamaha-c5').catch(() => {});
+      this.loadSampleForMidi(audioCtx, midi, source).catch(() => {});
     });
   }
 
   /**
-   * Finds nearest anchor midi for Salamander
+   * Finds nearest anchor midi in a dictionary
    */
-  private findNearestSalamanderAnchor(targetMidi: number): { anchorMidi: number; sampleName: string } {
-    const anchorMidis = Object.keys(SALAMANDER_ANCHORS).map(Number).sort((a, b) => a - b);
+  private findNearestAnchor(targetMidi: number, anchors: Record<number, string>): { anchorMidi: number; sampleName: string } {
+    const anchorMidis = Object.keys(anchors).map(Number).sort((a, b) => a - b);
     let closest = anchorMidis[0];
     let minDiff = Math.abs(targetMidi - closest);
 
@@ -172,8 +187,42 @@ class PianoSoundManager {
 
     return {
       anchorMidi: closest,
-      sampleName: SALAMANDER_ANCHORS[closest],
+      sampleName: anchors[closest],
     };
+  }
+
+  /**
+   * Checks if an audio buffer is already in memory cache
+   */
+  private getCachedSampleForMidi(
+    midi: number,
+    source: PianoSoundSource
+  ): { buffer: AudioBuffer; playbackRate: number } | null {
+    if (source === 'acoustic-synth') return null;
+
+    let anchorMidi = 60;
+    let cacheKey = '';
+
+    if (source === 'yamaha-c5') {
+      const res = this.findNearestAnchor(midi, SALAMANDER_ANCHORS);
+      anchorMidi = res.anchorMidi;
+      cacheKey = `salamander_${res.sampleName}`;
+    } else {
+      const res = this.findNearestAnchor(midi, SOUNDFONT_ANCHORS);
+      anchorMidi = res.anchorMidi;
+      cacheKey = `${source}_${res.sampleName}`;
+    }
+
+    const buffer = this.bufferCache.get(cacheKey);
+    if (buffer) {
+      const semitoneShift = midi - anchorMidi;
+      return {
+        buffer,
+        playbackRate: Math.pow(2, semitoneShift / 12),
+      };
+    }
+
+    return null;
   }
 
   /**
@@ -188,21 +237,23 @@ class PianoSoundManager {
 
     let sampleUrl = '';
     let cacheKey = '';
-    let playbackRate = 1.0;
+    let anchorMidi = 60;
 
     if (source === 'yamaha-c5') {
-      const { anchorMidi, sampleName } = this.findNearestSalamanderAnchor(midi);
-      sampleUrl = `${SALAMANDER_BASE_URL}${sampleName}.mp3`;
-      cacheKey = `salamander_${sampleName}`;
-      const semitoneShift = midi - anchorMidi;
-      playbackRate = Math.pow(2, semitoneShift / 12);
+      const res = this.findNearestAnchor(midi, SALAMANDER_ANCHORS);
+      anchorMidi = res.anchorMidi;
+      sampleUrl = `${SALAMANDER_BASE_URL}${res.sampleName}.mp3`;
+      cacheKey = `salamander_${res.sampleName}`;
     } else {
-      const sfName = midiToSoundFontName(midi);
+      const res = this.findNearestAnchor(midi, SOUNDFONT_ANCHORS);
+      anchorMidi = res.anchorMidi;
       const baseUrl = source === 'steinway' ? FLUIDR3_BASE_URL : MUSYNG_BASE_URL;
-      sampleUrl = `${baseUrl}${sfName}.mp3`;
-      cacheKey = `${source}_${sfName}`;
-      playbackRate = 1.0;
+      sampleUrl = `${baseUrl}${res.sampleName}.mp3`;
+      cacheKey = `${source}_${res.sampleName}`;
     }
+
+    const semitoneShift = midi - anchorMidi;
+    const playbackRate = Math.pow(2, semitoneShift / 12);
 
     // Check memory cache
     if (this.bufferCache.has(cacheKey)) {
@@ -245,9 +296,12 @@ class PianoSoundManager {
 
   /**
    * Main playback router:
-   * Plays real acoustic sample if available, or seamlessly falls back to enhanced physical synthesis.
+   * Guarantees INSTANT sound playback on any user touch/click.
+   * If sample is cached, plays real sampled audio.
+   * If sample is still loading or offline, immediately plays enhanced acoustic physical synthesis,
+   * while preloading the sample in the background for subsequent notes.
    */
-  public async playNote(
+  public playNote(
     ctx: AudioContext,
     now: number,
     freq: number,
@@ -255,38 +309,38 @@ class PianoSoundManager {
     midi: number,
     masterOutputNode: AudioNode,
     createSpatialPanner: (ctx: AudioContext, midi: number) => AudioNode
-  ): Promise<number> {
+  ): number {
+    const playTime = Math.max(ctx.currentTime, now);
     const source = this.currentSource;
 
-    // Trigger preload of neighbors on interaction
+    // Trigger preload in the background on interaction
     if (!this.isPreloaded) {
       this.preloadEssentialNotes(ctx);
     }
 
     if (source !== 'acoustic-synth') {
-      try {
-        const sampleResult = await this.loadSampleForMidi(ctx, midi, source);
-        if (sampleResult && sampleResult.buffer) {
-          return this.playRealSample(
-            ctx,
-            now,
-            sampleResult.buffer,
-            sampleResult.playbackRate,
-            durationSeconds,
-            midi,
-            masterOutputNode,
-            createSpatialPanner
-          );
-        }
-      } catch {
-        // Fallback to enhanced synthesizer on network or audio decoding delay
+      const cached = this.getCachedSampleForMidi(midi, source);
+      if (cached) {
+        return this.playRealSample(
+          ctx,
+          playTime,
+          cached.buffer,
+          cached.playbackRate,
+          durationSeconds,
+          midi,
+          masterOutputNode,
+          createSpatialPanner
+        );
       }
+
+      // Not in cache yet: kick off background download so next presses are instant
+      this.loadSampleForMidi(ctx, midi, source).catch(() => {});
     }
 
-    // Enhanced Physical Synthesizer (Zero network delay fallback)
+    // Zero-latency instant fallback: Enhanced physical synthesizer
     return this.synthesizeEnhancedAcousticPiano(
       ctx,
-      now,
+      playTime,
       freq,
       durationSeconds,
       midi,
@@ -308,9 +362,10 @@ class PianoSoundManager {
     masterOutputNode: AudioNode,
     createSpatialPanner: (ctx: AudioContext, midi: number) => AudioNode
   ): number {
+    const playTime = Math.max(ctx.currentTime, now);
     const sourceNode = ctx.createBufferSource();
     sourceNode.buffer = buffer;
-    sourceNode.playbackRate.setValueAtTime(playbackRate, now);
+    sourceNode.playbackRate.setValueAtTime(playbackRate, playTime);
 
     const gainNode = ctx.createGain();
     const panner = createSpatialPanner(ctx, midi);
@@ -318,20 +373,20 @@ class PianoSoundManager {
     const totalSampleDuration = buffer.duration / playbackRate;
     const ringTime = Math.min(totalSampleDuration, Math.max(duration * 1.5, 3.5));
 
-    // Smooth studio envelope
-    gainNode.gain.setValueAtTime(0.00001, now);
-    gainNode.gain.linearRampToValueAtTime(0.95, now + 0.004); // 4ms smooth anti-click attack
-    const releaseStart = Math.min(now + duration, now + ringTime - 0.4);
-    gainNode.gain.setValueAtTime(0.85, Math.max(now + 0.01, releaseStart));
-    gainNode.gain.exponentialRampToValueAtTime(0.00001, now + ringTime);
-    gainNode.gain.linearRampToValueAtTime(0, now + ringTime + 0.02);
+    // Smooth studio envelope with safe scheduling
+    gainNode.gain.setValueAtTime(0.00001, playTime);
+    gainNode.gain.linearRampToValueAtTime(0.95, playTime + 0.004); // 4ms smooth anti-click attack
+    const releaseStart = Math.min(playTime + duration, playTime + ringTime - 0.4);
+    gainNode.gain.setValueAtTime(0.85, Math.max(playTime + 0.01, releaseStart));
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, playTime + ringTime);
+    gainNode.gain.linearRampToValueAtTime(0, playTime + ringTime + 0.02);
 
     sourceNode.connect(gainNode);
     gainNode.connect(panner);
     panner.connect(masterOutputNode);
 
-    sourceNode.start(now);
-    sourceNode.stop(now + ringTime + 0.04);
+    sourceNode.start(playTime);
+    sourceNode.stop(playTime + ringTime + 0.04);
 
     return ringTime;
   }
