@@ -25,6 +25,7 @@ import { SettingsModal } from './components/Settings/SettingsModal';
 import { DetailedGuideModal } from './components/Common/DetailedGuideModal';
 import { Sparkles, Target, Layers, Mic } from 'lucide-react';
 import { mobileBackManager, useMobileBackHandler } from './utils/useMobileBackButton';
+import { useFullscreen } from './utils/useFullscreen';
 
 import {
   VocalRangeProfile,
@@ -64,6 +65,7 @@ export default function App() {
   const [currentPitch, setCurrentPitch] = useState<PitchDetectionResult | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { isFullscreen, toggleFullscreen } = useFullscreen();
   const [trainerSubMode, setTrainerSubMode] = useState<
     'ladder' | 'live_studio' | 'solfeggio' | 'mimic' | 'ai_coach' | 'free_tuner'
   >('ladder');
@@ -259,6 +261,8 @@ export default function App() {
         onToggleLanguage={handleToggleLanguage}
         onOpenTheory={() => setActiveTab('levels')}
         onOpenSectionGuide={() => setActiveGuideId(getActiveTabGuideId())}
+        onToggleFullscreen={toggleFullscreen}
+        isFullscreen={isFullscreen}
         language={settings.language}
         notation={settings.notation}
         theme={settings.theme}

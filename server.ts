@@ -16,6 +16,22 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
+  // Explicitly serve manifest.json with PWA CORS and correct manifest+json MIME type
+  app.get(['/manifest.json', '/manifest.webmanifest'], (_req, res) => {
+    res.setHeader('Content-Type', 'application/manifest+json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(path.resolve(__dirname, 'public', 'manifest.json'));
+  });
+
+  // Explicitly serve service worker with Service-Worker-Allowed header
+  app.get(['/service-worker.js', '/sw.js'], (_req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.resolve(__dirname, 'public', 'service-worker.js'));
+  });
+
   // Helper to initialize GoogleGenAI safely with system key and telemetry header
   const getAIClient = () => {
     return new GoogleGenAI({

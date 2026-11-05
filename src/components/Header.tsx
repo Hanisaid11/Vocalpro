@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MicOff, Cloud, Sliders, Music, Globe, BookOpen } from 'lucide-react';
+import { Mic, MicOff, Cloud, Sliders, Music, Globe, BookOpen, Maximize, Minimize } from 'lucide-react';
 import { VocalRangeProfile, PitchDetectionResult, AppLanguage, NotationSystem, AppTheme } from '../types/vocal';
 import { translations } from '../utils/i18n';
 import { formatNoteName } from '../utils/noteUtils';
@@ -18,6 +18,8 @@ interface HeaderProps {
   onToggleLanguage?: () => void;
   onOpenTheory?: () => void;
   onOpenSectionGuide?: () => void;
+  onToggleFullscreen?: () => void;
+  isFullscreen?: boolean;
   language?: AppLanguage;
   notation?: NotationSystem;
   theme?: AppTheme;
@@ -34,6 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleLanguage,
   onOpenTheory,
   onOpenSectionGuide,
+  onToggleFullscreen,
+  isFullscreen = false,
   language = 'ar',
   notation = 'arabic',
   theme = 'classic-piano',
@@ -74,8 +78,8 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </button>
 
-        {/* Right actions: Info Guide, Theory, Language, Settings, Metronome, Master Mic */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* Right actions: Info Guide, Theory, Language, Fullscreen, APK, Settings, Metronome, Master Mic */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Quick Section Educational Guide (i) Button */}
           {onOpenSectionGuide && (
             <InfoGuideButton
@@ -104,6 +108,39 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[11px] font-bold hidden sm:inline">
                 {language === 'ar' ? 'دروس النوتة' : 'Theory'}
               </span>
+            </button>
+          )}
+
+          {/* Fullscreen Edge-to-Edge Toggle Button */}
+          {onToggleFullscreen && (
+            <button
+              onClick={() => {
+                haptics.tap();
+                onToggleFullscreen();
+              }}
+              className={`p-1.5 sm:p-2 rounded-xl border transition shrink-0 ${
+                isFullscreen
+                  ? 'bg-pink-600/20 border-pink-500 text-pink-400 shadow-sm'
+                  : isLight
+                  ? 'bg-white hover:bg-amber-50/80 border-amber-200/80 text-slate-700 hover:text-slate-900 shadow-sm'
+                  : 'bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white shadow-sm'
+              }`}
+              title={
+                language === 'ar'
+                  ? isFullscreen
+                    ? 'الخروج من ملء الشاشة'
+                    : 'وضع ملء الشاشة وتجربة التطبيق'
+                  : isFullscreen
+                  ? 'Exit Fullscreen'
+                  : 'Immersive Fullscreen'
+              }
+              aria-label="Toggle Fullscreen"
+            >
+              {isFullscreen ? (
+                <Minimize className="w-3.5 h-3.5 text-pink-400" />
+              ) : (
+                <Maximize className="w-3.5 h-3.5" />
+              )}
             </button>
           )}
 
